@@ -1,9 +1,9 @@
 #include <stdio.h>
 //Esboço do menu
-int main() {
+int main(){
   int opcao = 0;
-  while (opcao != 5) {
-    printf("<<<< Aplications Menu >>>\n"
+  while (opcao != 5){
+    printf("<<<< Applications Menu >>>\n"
            "      1) Web Browser\n"
            "      2) Text Editor\n"
            "      3) Terminal\n"
