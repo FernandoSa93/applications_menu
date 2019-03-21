@@ -1,4 +1,5 @@
 #include <stdio.h>
+//ESboço do menu
 int main() {
   int opcao = 0;
   while (opcao != 5) {
