@@ -9,14 +9,18 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <signal.h>
 
 /*********************************************************************************************************************************************/
 //global variables
 int input_value=0;
 char statusWebBrowser[50]="Parado",
-       statusTextEditor[50]="Parado",
-       statusTerminal[50]="Parado",
-       statusFinalizarProcesso[50]=" ";
+     statusTextEditor[50]="Parado",
+     statusTerminal[50]="Parado",
+     statusKillProcess[50]=" ";
+pid_t pidWebBrowser,
+      pidTextEditor,
+      pidTerminal;
 
 /*********************************************************************************************************************************************/
 //home menu (display default)
@@ -37,24 +41,53 @@ void home (void)
          "    **************************************************************\n"
          "    **            Copyright Fábio, Fernando e Nadine            **\n"
          "    **************************************************************\n"
-         , statusWebBrowser, statusTextEditor, statusTerminal, statusFinalizarProcesso);
+         , statusWebBrowser, statusTextEditor, statusTerminal, statusKillProcess);
 }
 
 /*********************************************************************************************************************************************/
 //menu refresh (update display)
 
 /*********************************************************************************************************************************************/
-//execução de programas externos (ANALISAR)
+//execução de programas externos
 void exec_program(char *path, char *command, char status[50]){
   pid_t pid;
   if((pid = fork()) < 0){
     perror("Erro no fork!");
   }
-  else if(pid ==0){
+  else if(pid == 0){
     execlp(path, command, NULL);
   }
   else{
-    sprintf(status, "Executando, PID=%d", pid);
+    switch(input_value)
+    {
+    case 1:
+      pidWebBrowser = pid;
+      sprintf(status, "Executando, PID=%d", pidWebBrowser);
+    case 2:
+      pidTextEditor = pid;
+      sprintf(status, "Executando, PID=%d", pidTextEditor);
+    case 3:
+      pidTerminal = pid;
+      sprintf(status, "Executando, PID=%d", pidTerminal);
+    }
+  }
+}
+
+/*********************************************************************************************************************************************/
+//Finalização do processo solicitado
+void terminate_process(int process_pid, char status[50])
+{
+  int kill_status = 0;
+  kill_status = kill(process_pid, SIGTERM);
+  if (kill_status == 0)
+  {
+    strcpy(status, "concluido");
+    strcpy(statusKillProcess, "concluido");
+  }
+  else if(kill_status == -1)
+  {
+    strcpy(status, "falhou");
+    strcpy(statusKillProcess, "falhou");
   }
 }
 
@@ -62,6 +95,7 @@ void exec_program(char *path, char *command, char status[50]){
 //input reading
 int input_reading(void)
 {
+  int num_app = 0;
   input_value=0;
   printf("\n        Opção: ");
   scanf("%d",&input_value);
@@ -73,6 +107,26 @@ int input_reading(void)
         break;
     case 2:
         exec_program("/usr/bin/gedit", "gedit", statusTextEditor);
+        break;
+    case 4:
+        printf("Digite o número da aplicação que deseja finalizar: ");
+        scanf("%d",&num_app);
+        switch(num_app)
+        {
+          case 1:
+            terminate_process(pidWebBrowser, statusWebBrowser);
+            break;
+          case 2:
+            terminate_process(pidTextEditor, statusTextEditor);
+            break;
+          case 3:
+            terminate_process(pidTerminal, statusTerminal);
+            break;
+          default:
+            printf("Número inválido! Digite um número entre 1 e 3.\n");
+            sleep(2);
+            break;
+        }
         break;
     case 5:
         printf("Opção 'Quit' selecionada!");
