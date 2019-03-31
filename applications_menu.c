@@ -7,7 +7,6 @@
 //includes
 #include <stdio.h>
 #include <stdlib.h>
-//#include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -45,12 +44,18 @@ void home (void)
 //menu refresh (update display)
 
 /*********************************************************************************************************************************************/
-//executa Text Editor
-void executaTextEditor()
-{
-  system("gedit&");
-  sleep(1);
-  strcpy(statusTextEditor, "Executando, PID=");
+//execução de programas externos (ANALISAR)
+void exec_program(char *path, char *command, char status[50]){
+  pid_t pid;
+  if((pid = fork()) < 0){
+    perror("Erro no fork!");
+  }
+  else if(pid ==0){
+    execlp(path, command, NULL);
+  }
+  else{
+    sprintf(status, "Executando, PID=%d", pid);
+  }
 }
 
 /*********************************************************************************************************************************************/
@@ -67,7 +72,7 @@ int input_reading(void)
         printf("=1");
         break;
     case 2:
-        executaTextEditor();
+        exec_program("/usr/bin/gedit", "gedit", statusTextEditor);
         break;
     case 5:
         printf("Opção 'Quit' selecionada!");
