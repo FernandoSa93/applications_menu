@@ -49,13 +49,18 @@ void home (void)
 
 /*********************************************************************************************************************************************/
 //execução de programas externos
-void exec_program(char *path, char *command, char status[50]){
+void exec_program(char *path, char *command, char status[50], char *URL){
   pid_t pid;
   if((pid = fork()) < 0){
     perror("Erro no fork!");
   }
   else if(pid == 0){
-    execlp(path, command, NULL);
+    if(URL != NULL){
+      execlp(path, command, URL, NULL);
+    } 
+      else {
+       execlp(path, command, NULL, NULL);
+      }
   }
   else{
     switch(input_value)
@@ -84,17 +89,18 @@ void terminate_process(int process_pid, char status[50])
     strcpy(status, "concluido");
     strcpy(statusKillProcess, "concluido");
   }
-  else if(kill_status == -1)
-  {
-    strcpy(status, "falhou");
-    strcpy(statusKillProcess, "falhou");
-  }
+   else if(kill_status == -1)
+   {
+     strcpy(status, "falhou");
+     strcpy(statusKillProcess, "falhou");
+   }
 }
 
 /*********************************************************************************************************************************************/
 //input reading
 int input_reading(void)
 {
+  char URL[200];
   int num_app = 0;
   input_value=0;
   printf("\n        Opção: ");
@@ -103,10 +109,12 @@ int input_reading(void)
   switch(input_value)
   {
     case 1:
-        printf("=1");
+        printf("Digite a URL que deve abrir no Web Browser: \n");
+  	scanf("%s",URL);
+        exec_program("/usr/bin/firefox", "firefox", statusWebBrowser, URL);
         break;
     case 2:
-        exec_program("/usr/bin/gedit", "gedit", statusTextEditor);
+        exec_program("/usr/bin/gedit", "gedit", statusTextEditor, NULL);
         break;
     case 4:
         printf("Digite o número da aplicação que deseja finalizar: ");
