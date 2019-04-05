@@ -2,7 +2,7 @@
 ****Laborátorio de Sistemas Operacionais
 ****      Trabalho do Grau A (TGA)
 ****  Autores: Fábio, Fernando, Nadine
-****      Turma: GR16031-00011 
+****      Turma: GR16031-00011
 *********************************************************************************************************************************************/
 //includes
 #include <stdio.h>
@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 /*********************************************************************************************************************************************/
 //global variables
@@ -21,35 +23,36 @@ char statusWebBrowser[50]="Parado",
 pid_t pidWebBrowser,
       pidTextEditor,
       pidTerminal;
+struct sigaction sinal;
+
+void initiateSigAction(struct sigaction* p_conf_sinal);
+void treatSignal(int signum);
 
 /*********************************************************************************************************************************************/
 //home menu (display default)
 void home (void)
 {
-  system("clear\n\n");
-  //      12345678901234567890123456789012345678901234567890123456789012
-  printf("    **************************************************************\n"
-         "    **                <<<< Aplications Menu >>>>                **\n"
-         "    **************************************************************\n"
-         "    **                              |                           **\n"
-         "    **     1) Web Browser           | %-26s**\n"
-         "    **     2) Text Editor           | %-26s**\n"
-         "    **     3) Terminal              | %-26s**\n"
-         "    **     4) Finalizar Processo    | %-26s**\n"
-         "    **     5) Quit                  |                           **\n"
-         "    **                              |                           **\n"
-         "    **************************************************************\n"
-         "    **            Copyright Fábio, Fernando e Nadine            **\n"
-         "    **************************************************************\n"
-         , statusWebBrowser, statusTextEditor, statusTerminal, statusKillProcess);
+	system("clear\n\n");
+	printf("    **************************************************************\n"
+               "    **                <<<< Aplications Menu >>>>                **\n"
+               "    **************************************************************\n"
+               "    **                              |                           **\n"
+               "    **     1) Web Browser           | %-26s**\n"
+               "    **     2) Text Editor           | %-26s**\n"
+               "    **     3) Terminal              | %-26s**\n"
+               "    **     4) Finalizar Processo    | %-26s**\n"
+               "    **     5) Quit                  |                           **\n"
+               "    **                              |                           **\n"
+               "    **************************************************************\n"
+               "    **            Copyright Fábio, Fernando e Nadine            **\n"
+               "    **************************************************************\n"
+               , statusWebBrowser, statusTextEditor, statusTerminal, statusKillProcess);
 }
 
 /*********************************************************************************************************************************************/
-//menu refresh (update display)
-
-/*********************************************************************************************************************************************/
 //execução de programas externos
-void exec_program(char *path, char *command, char status[50], char *URL){
+void exec_program(char *path, char *command, char status[50], char *URL)
+{
   pid_t pid;
   if((pid = fork()) < 0){
     perror("Erro no fork!");
@@ -57,23 +60,22 @@ void exec_program(char *path, char *command, char status[50], char *URL){
   else if(pid == 0){
     if(URL != NULL){
       execlp(path, command, URL, NULL);
-    } 
-      else {
-       execlp(path, command, NULL, NULL);
-      }
+    }
+    else{
+      execlp(path, command, NULL, NULL);
+    }
   }
   else{
-    switch(input_value)
-    {
-    case 1:
-      pidWebBrowser = pid;
-      sprintf(status, "Executando, PID=%d", pidWebBrowser);
-    case 2:
-      pidTextEditor = pid;
-      sprintf(status, "Executando, PID=%d", pidTextEditor);
-    case 3:
-      pidTerminal = pid;
-      sprintf(status, "Executando, PID=%d", pidTerminal);
+    switch(input_value){
+      case 1:
+        pidWebBrowser = pid;
+        sprintf(status, "Executando, PID=%d", pidWebBrowser);
+      case 2:
+        pidTextEditor = pid;
+        sprintf(status, "Executando, PID=%d", pidTextEditor);
+      case 3:
+        pidTerminal = pid;
+        sprintf(status, "Executando, PID=%d", pidTerminal);
     }
   }
 }
@@ -95,6 +97,46 @@ void terminate_process(int process_pid, char status[50])
      strcpy(statusKillProcess, "falhou");
    }
 }
+/*********************************************************************************************************************************************/
+// Controle de exibição dos status
+void initiateSigAction(struct sigaction* p_conf_sinal){
+  	memset(&sinal, 0, sizeof(sinal));
+  	sinal.sa_handler = &treatSignal;
+ 
+  	if(sigaction(SIGALRM, &sinal, NULL) != 0){
+    		perror("Falha ao instalar tratador do sinal SIGALRM");
+    		exit(-1);
+  	}
+
+	if(sigaction(SIGINT, &sinal, NULL) != 0){
+    		perror("Falha ao instalar tratador dO sinal SIGINT");
+    		exit(-1);
+  	}
+
+	if(sigaction(SIGCHLD, &sinal, NULL) != 0){
+    		perror("Falha ao instalar tratador dO sinal SIGCHLD");
+    		exit(-1);
+  	}
+}
+
+void treatSignal(int signum){
+        pid_t pid = 0;
+        int status;
+	char *statusAbortado = "concluido";
+	if(signum == SIGCHLD || signum == SIGINT || signum == SIGALRM){
+                pid = waitpid(-1, &status, WNOHANG);
+                if(pid == pidWebBrowser && pid != 0 && ((strcmp(statusWebBrowser, statusAbortado)) != 0)){
+                        pidWebBrowser = 0;
+                        strcpy(statusWebBrowser, "Abortado");
+                } else if(pid == pidTextEditor && pid != 0 && ((strcmp(statusTextEditor, statusAbortado)) != 0)){
+                        pidTextEditor = 0;
+                        strcpy(statusTextEditor, "Abortado");
+                } else if(pid == pidTerminal && pid != 0 && ((strcmp(statusTerminal, statusAbortado)) != 0)){
+                        pidTerminal = 0;
+                        strcpy(statusTerminal, "Abortado");
+                }
+	}		 
+}
 
 /*********************************************************************************************************************************************/
 //input reading
@@ -110,14 +152,19 @@ int input_reading(void)
   {
     case 1:
         printf("Digite a URL que deve abrir no Web Browser: \n");
-  	scanf("%s",URL);
+	pause();
+        scanf("%s",URL);
         exec_program("/usr/bin/firefox", "firefox", statusWebBrowser, URL);
         break;
     case 2:
         exec_program("/usr/bin/gedit", "gedit", statusTextEditor, NULL);
         break;
+    case 3:
+        exec_program("/usr/bin/xterm", "xterm", statusTerminal, NULL);
+        break;
     case 4:
         printf("Digite o número da aplicação que deseja finalizar: ");
+	pause();
         scanf("%d",&num_app);
         switch(num_app)
         {
@@ -140,10 +187,10 @@ int input_reading(void)
         printf("Opção 'Quit' selecionada!");
         break;
     default:
-        printf("Dado inválido! Selecione uma opção entre 1 e 5.\n");
-//   ATENÇÃO!!!!
-//        input_value=5;    (Acredito que aqui não seja necessário parar a execução...)
-        break;
+	if ((!SIGCHLD && !SIGINT && !SIGALRM) && (input_value < 1 || input_value > 5)){
+        	printf("Dado inválido! Selecione uma opção entre 1 e 5.\n");
+    		break;
+	}
   }
   printf("\n");
   sleep(1);
@@ -155,13 +202,15 @@ int input_reading(void)
 //main code
 int main(void)//void or int?
 {
-//    ATENÇÃO!!!!
-//   home();                        (home() e input_reading() estavam sendo chamados aqui e dentro do loop,
-//   input_value=input_reading();   duplicando saídas como o quit, sendo necessário digitar 5 duas vezes para encerrar a execução...)
-
+  
 //Start home menu and input reading. It does while there isn't the value in the input.
   do
-  {
+  {  
+	initiateSigAction(&sinal);
+
+  	if (alarm(5) < 0){
+  		perror("Falha ao agendar alarme");
+     	}
     home();
     input_value=input_reading();
   } while (input_value!=5);
