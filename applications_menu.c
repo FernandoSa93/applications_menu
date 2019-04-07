@@ -24,9 +24,56 @@ pid_t pidWebBrowser,
       pidTextEditor,
       pidTerminal;
 struct sigaction sinal;
+sigset_t newmask, oldmask;
 
 void initiateSigAction(struct sigaction* p_conf_sinal);
 void treatSignal(int signum);
+
+/*********************************************************************************************************************************************/
+// Instanciador de sinais
+void initiateSigAction(struct sigaction* p_conf_sinal){
+	sigemptyset(&newmask);
+	sigaddset(&newmask, SIGINT);
+
+  	memset(&sinal, 0, sizeof(sinal));
+  	sinal.sa_handler = &treatSignal;
+ 
+  	if(sigaction(SIGALRM, &sinal, NULL) != 0){
+    		perror("Falha ao instalar tratador do sinal SIGALRM");
+    		exit(-1);
+  	}
+
+	if(sigaction(SIGINT, &sinal, NULL) != 0){
+    		perror("Falha ao instalar tratador do sinal SIGINT");
+    		exit(-1);
+  	}
+
+	if(sigaction(SIGCHLD, &sinal, NULL) != 0){
+    		perror("Falha ao instalar tratador do sinal SIGCHLD");
+    		exit(-1);
+  	}
+}
+
+/*********************************************************************************************************************************************/
+// Tratador dos sinais
+void treatSignal(int signum){
+        pid_t pid = 0;
+        int status;
+	char *statusAbortado = "concluido";
+	if(signum == SIGCHLD || signum == SIGINT || signum == SIGALRM){
+                pid = waitpid(-1, &status, WNOHANG);
+                if(pid == pidWebBrowser && pid != 0 && ((strcmp(statusWebBrowser, statusAbortado)) != 0)){
+                        pidWebBrowser = 0;
+                        strcpy(statusWebBrowser, "Abortado");
+                } else if(pid == pidTextEditor && pid != 0 && ((strcmp(statusTextEditor, statusAbortado)) != 0)){
+                        pidTextEditor = 0;
+                        strcpy(statusTextEditor, "Abortado");
+                } else if(pid == pidTerminal && pid != 0 && ((strcmp(statusTerminal, statusAbortado)) != 0)){
+                        pidTerminal = 0;
+                        strcpy(statusTerminal, "Abortado");
+                }
+	}		 
+}
 
 /*********************************************************************************************************************************************/
 //home menu (display default)
@@ -58,6 +105,7 @@ void exec_program(char *path, char *command, char status[50], char *URL)
     perror("Erro no fork!");
   }
   else if(pid == 0){
+    sigprocmask(SIG_BLOCK, &newmask, &oldmask);
     if(URL != NULL){
       execlp(path, command, URL, NULL);
     }
@@ -96,46 +144,6 @@ void terminate_process(int process_pid, char status[50])
      strcpy(status, "falhou");
      strcpy(statusKillProcess, "falhou");
    }
-}
-/*********************************************************************************************************************************************/
-// Controle de exibição dos status
-void initiateSigAction(struct sigaction* p_conf_sinal){
-  	memset(&sinal, 0, sizeof(sinal));
-  	sinal.sa_handler = &treatSignal;
- 
-  	if(sigaction(SIGALRM, &sinal, NULL) != 0){
-    		perror("Falha ao instalar tratador do sinal SIGALRM");
-    		exit(-1);
-  	}
-
-	if(sigaction(SIGINT, &sinal, NULL) != 0){
-    		perror("Falha ao instalar tratador dO sinal SIGINT");
-    		exit(-1);
-  	}
-
-	if(sigaction(SIGCHLD, &sinal, NULL) != 0){
-    		perror("Falha ao instalar tratador dO sinal SIGCHLD");
-    		exit(-1);
-  	}
-}
-
-void treatSignal(int signum){
-        pid_t pid = 0;
-        int status;
-	char *statusAbortado = "concluido";
-	if(signum == SIGCHLD || signum == SIGINT || signum == SIGALRM){
-                pid = waitpid(-1, &status, WNOHANG);
-                if(pid == pidWebBrowser && pid != 0 && ((strcmp(statusWebBrowser, statusAbortado)) != 0)){
-                        pidWebBrowser = 0;
-                        strcpy(statusWebBrowser, "Abortado");
-                } else if(pid == pidTextEditor && pid != 0 && ((strcmp(statusTextEditor, statusAbortado)) != 0)){
-                        pidTextEditor = 0;
-                        strcpy(statusTextEditor, "Abortado");
-                } else if(pid == pidTerminal && pid != 0 && ((strcmp(statusTerminal, statusAbortado)) != 0)){
-                        pidTerminal = 0;
-                        strcpy(statusTerminal, "Abortado");
-                }
-	}		 
 }
 
 /*********************************************************************************************************************************************/
@@ -202,12 +210,10 @@ int input_reading(void)
 //main code
 int main(void)//void or int?
 {
-  
+  initiateSigAction(&sinal);   
 //Start home menu and input reading. It does while there isn't the value in the input.
   do
-  {  
-	initiateSigAction(&sinal);
-
+  {  	
   	if (alarm(5) < 0){
   		perror("Falha ao agendar alarme");
      	}
