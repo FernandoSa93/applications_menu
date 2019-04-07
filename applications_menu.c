@@ -14,7 +14,7 @@
 #include <sys/types.h>
 
 /*********************************************************************************************************************************************/
-//global variables
+//Variáveis globais
 int input_value=0;
 char statusWebBrowser[50]="Parado",
      statusTextEditor[50]="Parado",
@@ -26,17 +26,23 @@ pid_t pidWebBrowser,
 struct sigaction sinal;
 sigset_t newmask, oldmask;
 
-void initiateSigAction(struct sigaction* p_conf_sinal);
-void treatSignal(int signum);
+//Declaração dos métodos
+void initiate_handler(struct sigaction* sign);
+void treat_sign(int signum);
+void home (void);
+void exec_program(char *path, char *command, char status[50], char *URL);
+void terminate_process(int process_pid, char status[50]);
+int input_reading(void);
 
 /*********************************************************************************************************************************************/
-// Instanciador de sinais
-void initiateSigAction(struct sigaction* p_conf_sinal){
+//Instanciador de sinais
+//Recebe por parâmetro o sinal e inicia o tratador de sinais.
+void initiate_handler(struct sigaction* sign){
 	sigemptyset(&newmask);
 	sigaddset(&newmask, SIGINT);
 
   	memset(&sinal, 0, sizeof(sinal));
-  	sinal.sa_handler = &treatSignal;
+  	sinal.sa_handler = &treat_sign;
  
   	if(sigaction(SIGALRM, &sinal, NULL) != 0){
     		perror("Falha ao instalar tratador do sinal SIGALRM");
@@ -55,12 +61,14 @@ void initiateSigAction(struct sigaction* p_conf_sinal){
 }
 
 /*********************************************************************************************************************************************/
-// Tratador dos sinais
-void treatSignal(int signum){
+//Tratador de sinais
+//Recebe por parâmetro o sinal  
+//Executa o tratamento adequado de acordo com o sinal recebido.
+void treat_sign(int signum){
         pid_t pid = 0;
         int status;
 	char *statusAbortado = "concluido";
-	if(signum == SIGCHLD || signum == SIGINT || signum == SIGALRM){
+	if(signum == SIGCHLD || signum == SIGALRM){
                 pid = waitpid(-1, &status, WNOHANG);
                 if(pid == pidWebBrowser && pid != 0 && ((strcmp(statusWebBrowser, statusAbortado)) != 0)){
                         pidWebBrowser = 0;
@@ -72,11 +80,15 @@ void treatSignal(int signum){
                         pidTerminal = 0;
                         strcpy(statusTerminal, "Abortado");
                 }
+	}
+	if (signum == SIGINT){
+		printf("\nOpção inválida! CTRL+C pressionado.\n");	
 	}		 
 }
 
 /*********************************************************************************************************************************************/
-//home menu (display default)
+//Menu da aplicação
+//Nele é exibido os status e PID de cada processo.
 void home (void)
 {
 	system("clear\n\n");
@@ -97,7 +109,9 @@ void home (void)
 }
 
 /*********************************************************************************************************************************************/
-//execução de programas externos
+//Inicia a execução de programas externos
+//Recebe por parâmetro o caminho, comando, status e uma string de url
+//O método valida os dados vindos por parâmetro e de acordo estes dados executa determinada ação.
 void exec_program(char *path, char *command, char status[50], char *URL)
 {
   pid_t pid;
@@ -129,7 +143,9 @@ void exec_program(char *path, char *command, char status[50], char *URL)
 }
 
 /*********************************************************************************************************************************************/
-//Finalização do processo solicitado
+//Método que finaliza o processo solicitado
+//Recebe por parâmetros o pid e o status atual do processo a ser encerrado
+//Após executar o kill ele atualiza o status do processo.
 void terminate_process(int process_pid, char status[50])
 {
   int kill_status = 0;
@@ -147,7 +163,7 @@ void terminate_process(int process_pid, char status[50])
 }
 
 /*********************************************************************************************************************************************/
-//input reading
+//Método que lê a entrada do usuário, válida se é uma entrada esperada e executa o comando adequado.
 int input_reading(void)
 {
   char URL[200];
@@ -177,13 +193,31 @@ int input_reading(void)
         switch(num_app)
         {
           case 1:
-            terminate_process(pidWebBrowser, statusWebBrowser);
-            break;
+	   if(pidWebBrowser != 0){
+	       	terminate_process(pidWebBrowser, statusWebBrowser);
+	   } 
+	   else 
+	   {
+		printf("A aplicação não está executando, portanto, não é possível encerrá-la.");
+	   }
+           break;
           case 2:
-            terminate_process(pidTextEditor, statusTextEditor);
-            break;
+	   if(pidTextEditor != 0){
+	       	terminate_process(pidTextEditor, statusTextEditor);
+	   } 
+	   else 
+	   {
+		printf("A aplicação não está executando, portanto, não é possível encerrá-la.");
+	   }
+           break;
           case 3:
-            terminate_process(pidTerminal, statusTerminal);
+	   if(pidTerminal != 0){
+             	terminate_process(pidTerminal, statusTerminal);
+	   } 
+	   else 
+	   {
+		printf("A aplicação não está executando, portanto, não é possível encerrá-la.");
+	   }
             break;
           default:
             printf("Número inválido! Digite um número entre 1 e 3.\n");
@@ -207,22 +241,24 @@ int input_reading(void)
 }
 
 /*********************************************************************************************************************************************/
-//main code
-int main(void)//void or int?
+//Método main da aplicação
+//Dá início ao menu inicial e a leitura de entrada.
+
+int main(void)
 {
-  initiateSigAction(&sinal);   
-//Start home menu and input reading. It does while there isn't the value in the input.
+
+  initiate_handler(&sinal);   
+
   do
   {  	
-  	if (alarm(5) < 0){
-  		perror("Falha ao agendar alarme");
-     	}
+    if (alarm(5) < 0){
+      perror("Falha ao agendar alarme");
+    }
     home();
     input_value=input_reading();
   } while (input_value!=5);
 
   printf("Até a próxima!\n\n");
   sleep(2);
-//if int main
   return 0;
 }
