@@ -68,7 +68,7 @@ void treat_sign(int signum){
         pid_t pid = 0;
         int status;
 	char *statusAbortado = "concluido";
-	if(signum == SIGCHLD || signum == SIGALRM){
+	if(signum == SIGCHLD || signum == SIGALRM || signum == SIGINT){
                 pid = waitpid(-1, &status, WNOHANG);
                 if(pid == pidWebBrowser && pid != 0 && ((strcmp(statusWebBrowser, statusAbortado)) != 0)){
                         pidWebBrowser = 0;
@@ -80,9 +80,6 @@ void treat_sign(int signum){
                         pidTerminal = 0;
                         strcpy(statusTerminal, "Abortado");
                 }
-	}
-	if (signum == SIGINT){
-		printf("\nOpção inválida! CTRL+C pressionado.\n");	
 	}		 
 }
 
